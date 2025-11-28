@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -17,12 +18,22 @@ class HomeController extends AbstractController
         ]);
     }
 
-    #[Route('/api/health', name: 'app_health')]
-    public function health(): Response
+    #[Route('/api/health', name: 'api_health', methods: ['GET'])]
+    public function health(): JsonResponse
     {
-        return $this->json([
+        return new JsonResponse([
             'status' => 'healthy',
             'timestamp' => time(),
+        ]);
+    }
+
+    #[Route('/realtime', name: 'app_realtime')]
+    public function realtime(): Response
+    {
+        return $this->render('realtime/index.html.twig', [
+            'title' => 'Realtime Demo',
+            'message' => 'Experience realtime updates with Mercure!',
+            'mercure_public_url' => $_ENV['MERCURE_PUBLIC_URL'] ?? 'http://localhost:8081/.well-known/mercure',
         ]);
     }
 }

@@ -1,0 +1,137 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block body %}
+<div style="margin: 3rem auto; max-width: 800px;">
+    <h1>{{ title }}</h1>
+    <p style="font-size: 1.2rem; color: #666;">{{ message }}</p>
+
+    <div style="display: flex; gap: 2rem; margin-top: 2rem;">
+        <!-- Update Form -->
+        <div style="flex: 1; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+            <h3>Send Realtime Update</h3>
+            <form id="updateForm">
+                <div style="margin-bottom: 1rem;">
+                    <label for="topic" style="display: block; margin-bottom: 0.5rem;">Topic:</label>
+                    <input type="text" id="topic" name="topic" value="demo-updates" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label for="message" style="display: block; margin-bottom: 0.5rem;">Message:</label>
+                    <textarea id="message" name="message" rows="3" style="width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">{"text": "Hello from realtime!", "timestamp": "{{ "now"|date("Y-m-d H:i:s") }}"}</textarea>
+                </div>
+                <button type="submit" style="background: #007bff; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Send Update</button>
+                <button type="button" id="demoBtn" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-left: 0.5rem;">Send Demo Update</button>
+            </form>
+        </div>
+
+        <!-- Updates Display -->
+        <div style="flex: 1; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+            <h3>Realtime Updates</h3>
+            <div id="updates" style="height: 300px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 1rem;">
+                <p style="color: #666; margin: 0;">Waiting for updates...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Fetch JWT token for authentication
+async function getToken() {
+    try {
+        const response = await fetch('/api/realtime/token');
+        const data = await response.json();
+        return data.token;
+    } catch (error) {
+        console.error('Failed to get token:', error);
+        return null;
+    }
+}
+
+// Initialize EventSource with JWT token
+async function initEventSource() {
+    const token = await getToken();
+    if (!token) {
+        document.getElementById('updates').innerHTML = '<p style="color: red;">Failed to authenticate. Check console for details.</p>';
+        return;
+    }
+
+    const eventSource = new EventSource('{{ mercure_public_url }}?topic=demo-updates&authorization=' + token);
+
+    eventSource.onmessage = function(event) {
+        const data = JSON.parse(event.data);
+        const updatesDiv = document.getElementById('updates');
+
+        const updateDiv = document.createElement('div');
+        updateDiv.style.cssText = 'margin-bottom: 1rem; padding: 0.5rem; background: #e9ecef; border-radius: 4px;';
+        updateDiv.innerHTML = `
+            <strong>${new Date().toLocaleTimeString()}</strong><br>
+            <pre style="margin: 0.5rem 0 0 0; white-space: pre-wrap;">${JSON.stringify(data, null, 2)}</pre>
+        `;
+
+        updatesDiv.insertBefore(updateDiv, updatesDiv.firstChild);
+
+        // Keep only last 10 updates
+        while (updatesDiv.children.length > 10) {
+            updatesDiv.removeChild(updatesDiv.lastChild);
+        }
+    };
+
+    eventSource.onerror = function(event) {
+        console.error('EventSource error:', event);
+        document.getElementById('updates').innerHTML = '<p style="color: red;">Connection error. Check console for details.</p>';
+    };
+}
+
+// Initialize when page loads
+initEventSource();
+
+// Form submission
+document.getElementById('updateForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const topic = document.getElementById('topic').value;
+    const message = document.getElementById('message').value;
+
+    try {
+        const response = await fetch('/api/realtime/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                topic: topic,
+                message: JSON.parse(message)
+            })
+        });
+
+        if (response.ok) {
+            alert('Update sent successfully!');
+        } else {
+            alert('Error sending update');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error sending update');
+    }
+});
+
+// Demo button
+document.getElementById('demoBtn').addEventListener('click', async function() {
+    try {
+        const response = await fetch('/api/realtime/demo', {
+            method: 'GET'
+        });
+
+        if (response.ok) {
+            alert('Demo update sent!');
+        } else {
+            alert('Error sending demo update');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Error sending demo update');
+    }
+});
+</script>
+{% endblock %}
