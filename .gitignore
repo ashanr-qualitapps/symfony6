@@ -1,0 +1,71 @@
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+/.phpunit.cache/
+###< phpunit/phpunit ###
+
+###> symfony/asset-mapper ###
+/public/assets/
+/assets/vendor/
+###< symfony/asset-mapper ###
+
+###> squizlabs/php_codesniffer ###
+/.phpcs-cache
+/phpcs.xml
+###< squizlabs/php_codesniffer ###
+
+###> phpstan/phpstan ###
+phpstan.neon
+###< phpstan/phpstan ###
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Composer
+composer.phar
+
+# Temporary files
+*.tmp
+*.temp
+
+# Logs
+*.log
+
+# Symfony specific
+/app/config/parameters.yml
+/app/config/parameters.ini
+
+# Node.js (if used)
+node_modules/
+npm-debug.log*
+
+# Docker
+docker-compose.override.yml
+
+# Local environment files
+.env.dev
+.env.test
+.env.production

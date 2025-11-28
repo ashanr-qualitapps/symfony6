@@ -1,0 +1,11 @@
+# This file is loaded when APP_ENV=test
+# It makes services public for integration testing
+
+when@test:
+    services:
+        # Make services public for testing
+        App\Service\GreetingService:
+            public: true
+        
+        App\Service\Calculator:
+            public: true
