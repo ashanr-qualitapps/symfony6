@@ -66,7 +66,10 @@ phpstan: ## Run PHPStan static analysis
 phpmd: ## Run PHP Mess Detector
 	docker-compose exec php ./vendor/bin/phpmd src/ text phpmd.xml.dist
 
-lint: cs-check phpstan phpmd ## Run all linting tools
+deptrac: ## Run Deptrac layered architecture analysis
+	docker-compose exec php ./vendor/bin/deptrac analyze
+
+lint: cs-check phpstan phpmd deptrac ## Run all linting tools
 
 # ===========================================
 # SECURITY

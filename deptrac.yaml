@@ -1,0 +1,50 @@
+deptrac:
+    paths:
+        - ./src
+    exclude_files:
+        - '#.*test.*#'
+    layers:
+        -
+            name: Controller
+            collectors:
+                -
+                    type: classLike
+                    value: 'App\\Controller\\'
+        -
+            name: Repository
+            collectors:
+                -
+                    type: classLike
+                    value: 'App\\Repository\\'
+        -
+            name: Service
+            collectors:
+                -
+                    type: classLike
+                    value: 'App\\Service\\'
+        -
+            name: External
+            collectors:
+                -
+                    type: classLike
+                    value: Symfony
+                -
+                    type: classLike
+                    value: Psr
+                -
+                    type: classLike
+                    value: Lcobucci
+                -
+                    type: classLike
+                    value: Doctrine
+    ruleset:
+        Controller:
+            - Service
+            - External
+        Service:
+            - Repository
+            - External
+        Repository:
+            - External
+        External:
+            -

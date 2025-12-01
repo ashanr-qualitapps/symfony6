@@ -69,3 +69,7 @@ docker-compose.override.yml
 .env.dev
 .env.test
 .env.production
+
+###> deptrac/deptrac ###
+/.deptrac.cache
+###< deptrac/deptrac ###

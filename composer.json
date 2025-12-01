@@ -86,7 +86,8 @@
             "@auto-scripts"
         ],
         "cs-check": "./vendor/bin/phpcs",
-        "cs-fix": "./vendor/bin/phpcbf"
+        "cs-fix": "./vendor/bin/phpcbf",
+        "deptrac": "./vendor/bin/deptrac analyze"
     },
     "conflict": {
         "symfony/symfony": "*"
@@ -98,6 +99,7 @@
         }
     },
     "require-dev": {
+        "deptrac/deptrac": "^4.2",
         "phpmd/phpmd": "^2.13",
         "phpstan/phpstan": "^1.10",
         "phpunit/phpunit": "^11.5",
