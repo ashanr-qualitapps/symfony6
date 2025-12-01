@@ -207,7 +207,7 @@ class CountryController extends AbstractController
             ['name' => 'Zimbabwe', 'code' => 'ZW', 'telephoneCode' => '+263'],
         ];
 
-        $countriesWithFlags = array_map(function($country) {
+        $countriesWithFlags = array_map(function ($country) {
             $flag = $this->getFlagEmoji($country['code']);
             return [
                 'name' => $country['name'],
@@ -419,7 +419,7 @@ class CountryController extends AbstractController
             ['name' => 'Zimbabwe', 'code' => 'ZW', 'telephoneCode' => '+263'],
         ];
 
-        $countryCodes = array_map(function($country) {
+        $countryCodes = array_map(function ($country) {
             $flag = $this->getFlagUrl($country['code']);
             return [
                 'name' => $country['name'],

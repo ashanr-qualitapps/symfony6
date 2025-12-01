@@ -2,7 +2,10 @@
 
 namespace App\Controller;
 
-use Firebase\JWT\JWT;
+use DateTimeImmutable;
+use Lcobucci\JWT\Configuration;
+use Lcobucci\JWT\Signer\Hmac\Sha256;
+use Lcobucci\JWT\Signer\Key\InMemory;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -60,15 +63,13 @@ class RealtimeController extends AbstractController
     {
         $secret = $_ENV['MERCURE_JWT_SECRET'] ?? '!ChangeThisMercureHubJWTSecretKey!';
 
-        $payload = [
-            'mercure' => [
-                'subscribe' => ['*'], // Allow subscribing to all topics
-            ],
-            'exp' => time() + 3600, // Token expires in 1 hour
-        ];
+        $config = Configuration::forSymmetricSigner(new Sha256(), InMemory::plainText($secret));
 
-        $token = JWT::encode($payload, $secret, 'HS256');
+        $token = $config->builder()
+            ->withClaim('mercure', ['subscribe' => ['*']])
+            ->expiresAt(new DateTimeImmutable('+1 hour'))
+            ->getToken($config->signer(), $config->signingKey());
 
-        return $this->json(['token' => $token]);
+        return $this->json(['token' => $token->toString()]);
     }
 }

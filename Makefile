@@ -49,3 +49,57 @@ clean: down ## Clean up containers and volumes
 	rm -rf var/cache/* var/log/*
 
 install: build up setup ## Full installation (build, up, setup)
+
+# ===========================================
+# CODE QUALITY
+# ===========================================
+
+cs-check: ## Check code style with PHP_CodeSniffer
+	docker-compose exec php ./vendor/bin/phpcs --standard=phpcs.xml.dist src/ tests/
+
+cs-fix: ## Fix code style with PHP_CodeSniffer
+	docker-compose exec php ./vendor/bin/phpcbf --standard=phpcs.xml.dist src/ tests/
+
+phpstan: ## Run PHPStan static analysis
+	docker-compose exec php ./vendor/bin/phpstan analyse --configuration=phpstan.dist.neon --memory-limit=1G
+
+phpmd: ## Run PHP Mess Detector
+	docker-compose exec php ./vendor/bin/phpmd src/ text phpmd.xml.dist
+
+lint: cs-check phpstan phpmd ## Run all linting tools
+
+# ===========================================
+# SECURITY
+# ===========================================
+
+security-check: ## Run Symfony security checker
+	docker-compose exec php symfony check:security
+
+composer-audit: ## Run Composer security audit
+	docker-compose exec php composer audit
+
+security-all: security-check composer-audit ## Run all security checks
+
+# ===========================================
+# PRODUCTION
+# ===========================================
+
+build-prod: ## Build production Docker image
+	docker build -f Dockerfile.prod -t symfony6-app:latest .
+
+up-prod: ## Start production containers
+	docker-compose -f docker-compose.prod.yml up -d
+
+down-prod: ## Stop production containers
+	docker-compose -f docker-compose.prod.yml down
+
+logs-prod: ## View production logs
+	docker-compose -f docker-compose.prod.yml logs -f
+
+# ===========================================
+# CI/CD
+# ===========================================
+
+ci: lint test security-all ## Run full CI pipeline locally
+
+ci-quick: cs-check phpstan test ## Run quick CI checks
