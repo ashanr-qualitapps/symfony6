@@ -14,6 +14,11 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 class GreetingServiceTest extends KernelTestCase
 {
+    protected static function getKernelClass(): string
+    {
+        return \App\Kernel::class;
+    }
+
     private GreetingService $greetingService;
 
     protected function setUp(): void

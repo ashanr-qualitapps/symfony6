@@ -8,6 +8,11 @@ use Symfony\Component\Mercure\Update;
 
 class RealtimeControllerTest extends WebTestCase
 {
+    protected static function getKernelClass(): string
+    {
+        return \App\Kernel::class;
+    }
+
     public function testRealtimeUpdateWithValidData(): void
     {
         $client = static::createClient();
