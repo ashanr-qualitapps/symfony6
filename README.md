@@ -219,6 +219,179 @@ docker-compose down
 docker-compose up -d --build --force-recreate
 ```
 
+## Code Quality & Architecture (Deptrac)
+
+Deptrac is a static analysis tool that helps you enforce layered architecture and dependency rules in your codebase. It's already included as a development dependency in this project (`deptrac/deptrac`) and can be run via the Makefile target or Composer script.
+
+### Why use Deptrac
+- Enforce a layered architecture (eg. controllers -> services -> repositories)
+- Prevent direct dependencies between layers that should remain isolated
+- Fail CI builds when a violation is introduced
+
+### Run Deptrac
+- Via Makefile:
+
+```bash
+make deptrac
+```
+
+- Via Composer script (present in `composer.json`):
+
+```bash
+composer deptrac
+```
+
+- Directly with the binary (local):
+
+```bash
+./vendor/bin/deptrac analyze --formatter=console --report-uncovered
+```
+
+- Inside Docker:
+
+```bash
+docker-compose exec php ./vendor/bin/deptrac analyze --formatter=console --report-uncovered
+```
+
+### Configuration
+Deptrac looks for `deptrac.yaml` in the project root by default. If your project does not include this file, you can create a simple starter configuration to get going. Example `deptrac.yaml`:
+
+```yaml
+paths:
+    - src
+exclude_files:
+    - tests/*
+
+layers:
+    Controller:
+        collectors:
+            - type: className
+                regex: '^App\\\\Controller\\\\'
+    Service:
+        collectors:
+            - type: className
+                regex: '^App\\\\Service\\\\'
+    Repository:
+        collectors:
+            - type: className
+                regex: '^App\\\\Repository\\\\'
+    Entity:
+        collectors:
+            - type: className
+                regex: '^App\\\\Entity\\\\'
+
+ruleset:
+    Controller:
+        - Service
+        - Repository
+        - Entity
+    Service:
+        - Repository
+        - Entity
+    Repository:
+        - Entity
+    Entity: []
+```
+
+This sample demonstrates a strict layering approach:
+- Controllers can depend on Services, Repositories, and Entities
+- Services can depend on Repositories and Entities
+- Repositories can depend only on Entities
+- Entities should not depend on any of the above
+
+Adjust the regex and rules to fit your application's architecture. Run Deptrac after updating the config to verify the rules.
+
+### CI Integration
+Add a CI step that runs Deptrac and fails the job if a violation is detected, for example:
+
+```yaml
+# GitHub Actions example step
+- name: Run Deptrac
+    run: composer deptrac
+```
+
+Or in Docker-based CI jobs:
+
+```yaml
+- name: Run Deptrac
+    run: docker-compose exec php ./vendor/bin/deptrac analyze --formatter=console --report-uncovered
+```
+
+Deptrac exits with a non-zero code if violations are found, causing the CI job to fail.
+
+
+## Code Quality & Security Tools
+
+This project uses several tools to ensure code quality, maintainability, security, and consistent style. Below is a quick reference to run them locally and in CI.
+
+Tools included in this repository:
+- PHP_CodeSniffer (phpcs): Check coding standards.
+- PHP CS Fixer (phpcbf via composer script `cs-fix`): Automatically fix style problems.
+- PHPStan: Static analysis (see `phpstan.dist.neon`).
+- PHP Mess Detector (phpmd): Find potential bugs and suboptimal code.
+- PHPUnit: Unit and integration testing.
+- Deptrac: Layered architecture enforcement.
+- Composer Audit: Checks known vulnerabilities in Composer packages.
+- Symfony Security Checker: Checks project configuration security issues.
+- Snyk (CI): Optional dependency scanning service used in CI.
+
+Useful Makefile targets and composer scripts:
+
+- Makefile targets (run inside repo root):
+
+```bash
+# Run all linting tools (includes PHPStan, PHPMD, PHPCS and Deptrac)
+make lint
+
+# Run single checks
+make cs-check
+make cs-fix
+make phpstan
+make phpmd
+make deptrac
+
+# Run tests
+make test
+make test-coverage
+
+# Security checks
+make security-check
+make composer-audit
+```
+
+- Composer scripts (use inside PHP container or locally if dependencies installed):
+```bash
+composer cs-check
+composer cs-fix
+composer deptrac
+```
+
+CLI commands (run inside the PHP container via Docker Compose):
+```bash
+docker-compose exec php ./vendor/bin/phpcs --standard=phpcs.xml.dist src/ tests/
+docker-compose exec php ./vendor/bin/phpcbf --standard=phpcs.xml.dist src/ tests/
+docker-compose exec php ./vendor/bin/phpstan analyse --configuration=phpstan.dist.neon --memory-limit=1G
+docker-compose exec php ./vendor/bin/phpmd src/ text phpmd.xml.dist
+docker-compose exec php php bin/phpunit --configuration phpunit.dist.xml
+docker-compose exec php ./vendor/bin/deptrac analyze --formatter=console --report-uncovered
+docker-compose exec php composer audit
+docker-compose exec php symfony check:security
+```
+
+CI Integration tips:
+- Add `make lint` to your CI pipeline to ensure code quality checks run on every PR.
+- Add `composer deptrac` to CI to enforce architectural constraints.
+- Use `composer audit` and Snyk in CI to scan dependencies for vulnerabilities.
+- Fail the CI job when critical checks fail (e.g., `--fail-on-uncovered` or `--fail-on-violation` for Deptrac, `--level` for PHPStan if configured).
+
+Quick fixes:
+- Use `make cs-fix` to auto-correct coding standard violations.
+- Use `composer deptrac` to detect architecture violations and then update layers or code accordingly.
+
+Notes:
+- The Makefile runs these tools inside the project's PHP container to ensure the same environment as CI.
+- Adjust rules in `deptrac.yaml` and `phpstan.dist.neon` as your architecture evolves.
+
 ## License
 
 This project is open-source and available under the MIT License.
