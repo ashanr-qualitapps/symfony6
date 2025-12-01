@@ -24,3 +24,18 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    App\Controller\RegistrationController:
+        tags: ['controller.service_arguments']
+
+    App\Controller\LoginController:
+        tags: ['controller.service_arguments']
+
+    App\Security\AuthenticationSuccessHandler:
+        public: true
+
+    App\Security\AuthenticationFailureHandler:
+        public: true
+
+    App\Security\ApiTokenAuthenticator:
+        public: true

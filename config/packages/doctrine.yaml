@@ -26,8 +26,8 @@ doctrine:
 when@test:
     doctrine:
         dbal:
-            # "TEST_TOKEN" is typically set by ParaTest
-            dbname_suffix: '_test%env(default::TEST_TOKEN)%'
+            # Use the base database in test instead of _test suffix so tests run with the same DB
+            dbname_suffix: ''
 
 when@prod:
     doctrine:
