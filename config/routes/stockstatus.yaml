@@ -1,0 +1,4 @@
+stock_status:
+    path: /api/stock-status
+    controller: App\StockStatusBundle\Controller\StockStatusController::index
+    methods: GET

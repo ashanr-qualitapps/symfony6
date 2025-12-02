@@ -32,6 +32,10 @@ services:
     App\Controller\LoginController:
         tags: ['controller.service_arguments']
 
+    # Register StockStatus controller so attribute-less route or service controller usage works
+    App\StockStatusBundle\Controller\StockStatusController:
+        tags: ['controller.service_arguments']
+
     App\Security\AuthenticationSuccessHandler:
         public: true
 
