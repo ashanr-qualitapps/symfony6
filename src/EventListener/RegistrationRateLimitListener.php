@@ -24,13 +24,13 @@ class RegistrationRateLimitListener
     public function onRequest(RequestEvent $event): void
     {
         $request = $event->getRequest();
-        
+
         // Apply rate limiting to registration endpoint
         if ($request->getPathInfo() === '/api/register' && $request->isMethod('POST')) {
             // Skip rate limiting in test environment unless explicitly enabled
             $requestData = json_decode($request->getContent(), true) ?: [];
             $enableRateLimiting = $requestData['enable_rate_limiting'] ?? false;
-            
+
             if ($this->kernel->getEnvironment() === 'test' && !$enableRateLimiting) {
                 return;
             }

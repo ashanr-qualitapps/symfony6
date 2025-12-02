@@ -37,10 +37,10 @@ class AuthenticationFailureHandler implements AuthenticationFailureHandlerInterf
 
         // Use test_id from request data if available (for testing), otherwise use IP
         $identifier = $requestData['test_id'] ?? $request->getClientIp() ?: 'unknown';
-        
+
         // Check and update login attempts
         $attempts = $this->getAttempts($identifier);
-        
+
         if ($attempts >= self::MAX_ATTEMPTS) {
             $retryAfter = $this->getRetryAfter($identifier);
             return new JsonResponse([
@@ -48,7 +48,7 @@ class AuthenticationFailureHandler implements AuthenticationFailureHandlerInterf
                 'retry_after' => $retryAfter
             ], Response::HTTP_TOO_MANY_REQUESTS);
         }
-        
+
         // Increment attempts
         $this->incrementAttempts($identifier);
 
@@ -68,7 +68,7 @@ class AuthenticationFailureHandler implements AuthenticationFailureHandlerInterf
             'identifier' => $identifier,
             'minutes' => self::LOCKOUT_MINUTES
         ]);
-        
+
         $row = $result->fetchAssociative();
         return $row ? (int)$row['attempts'] : 0;
     }
@@ -85,7 +85,7 @@ class AuthenticationFailureHandler implements AuthenticationFailureHandlerInterf
             'identifier' => $identifier,
             'minutes' => self::LOCKOUT_MINUTES
         ]);
-        
+
         // If no rows were updated, insert a new record
         if ($affectedRows === 0) {
             $this->connection->executeStatement('
@@ -106,7 +106,7 @@ class AuthenticationFailureHandler implements AuthenticationFailureHandlerInterf
             'identifier' => $identifier,
             'minutes' => self::LOCKOUT_MINUTES
         ]);
-        
+
         $row = $result->fetchAssociative();
         return max(0, $row ? (int)$row['seconds'] : 0);
     }

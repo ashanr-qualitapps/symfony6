@@ -45,6 +45,13 @@ services:
             $loginLimiterFactory: '@limiter.login'
             $registrationLimiterFactory: '@limiter.registration'
 
+    App\Service\SiteUpdateManager:
+        arguments:
+            $adminEmail: '%env(ADMIN_EMAIL)%'
+    App\Service\MessageGenerator:
+        arguments:
+            $logger: '@monolog.logger.request'
+
     # Temporarily disabled - using database-based rate limiting
     # App\EventListener\RegistrationRateLimitListener:
     #     arguments:

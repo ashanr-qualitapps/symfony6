@@ -34,14 +34,14 @@ class ApiTokenAuthenticator extends AbstractAuthenticator
     public function authenticate(Request $request): Passport
     {
         $authHeader = $request->headers->get('Authorization');
-        
+
         if (null === $authHeader) {
             throw new CustomUserMessageAuthenticationException('No API token provided');
         }
 
         // Support both "Bearer token" and just "token"
-        $token = str_starts_with($authHeader, 'Bearer ') 
-            ? substr($authHeader, 7) 
+        $token = str_starts_with($authHeader, 'Bearer ')
+            ? substr($authHeader, 7)
             : $authHeader;
 
         if (empty($token)) {
@@ -50,7 +50,7 @@ class ApiTokenAuthenticator extends AbstractAuthenticator
 
         // Validate token against database
         $userIdentifier = $this->validateToken($token);
-        
+
         if (null === $userIdentifier) {
             throw new CustomUserMessageAuthenticationException('Invalid or expired token');
         }
@@ -79,7 +79,7 @@ class ApiTokenAuthenticator extends AbstractAuthenticator
     private function validateToken(string $token): ?string
     {
         $apiToken = $this->apiTokenRepository->findValidToken($token);
-        
+
         return $apiToken ? $apiToken->getUser()->getUserIdentifier() : null;
     }
 }

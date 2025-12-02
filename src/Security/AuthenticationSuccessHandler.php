@@ -25,18 +25,18 @@ class AuthenticationSuccessHandler implements AuthenticationSuccessHandlerInterf
     {
         /** @var User $user */
         $user = $token->getUser();
-        
+
         // Generate a simple token (in production, use JWT or similar)
         $apiToken = base64_encode(random_bytes(32));
-        
+
         // Create and persist the API token
         $tokenEntity = new ApiToken();
         $tokenEntity->setToken($apiToken);
         $tokenEntity->setUser($user);
-        
+
         $this->entityManager->persist($tokenEntity);
         $this->entityManager->flush();
-        
+
         return new JsonResponse([
             'success' => true,
             'token' => $apiToken,
