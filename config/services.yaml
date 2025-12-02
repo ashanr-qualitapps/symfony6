@@ -19,6 +19,7 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
+            - '../src/EventListener/RegistrationRateLimitListener.php'
 
     # Configure HTTP client to accept self-signed certificates in development
 
@@ -35,7 +36,24 @@ services:
         public: true
 
     App\Security\AuthenticationFailureHandler:
-        public: true
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
+            $kernel: '@kernel'
 
-    App\Security\ApiTokenAuthenticator:
-        public: true
+    App\EventListener\LoginRateLimitListener:
+        arguments:
+            $loginLimiterFactory: '@limiter.login'
+            $registrationLimiterFactory: '@limiter.registration'
+
+    # Temporarily disabled - using database-based rate limiting
+    # App\EventListener\RegistrationRateLimitListener:
+    #     arguments:
+    #         $registrationLimiterFactory: '@limiter.registration'
+    #         $kernel: '@kernel'
+
+    # Session handler for database storage
+    Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler:
+        arguments:
+            - '%env(DATABASE_URL)%'
+            - { db_table: 'sessions', db_id_col: 'sess_id', db_data_col: 'sess_data', db_time_col: 'sess_time', db_lifetime_col: 'sess_lifetime' }
+

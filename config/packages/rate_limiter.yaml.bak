@@ -1,0 +1,14 @@
+framework:
+    rate_limiter:
+        # Define a rate limiter for login attempts
+        login:
+            policy: 'fixed_window'
+            limit: 3
+            interval: '5 minutes'
+            storage_service: 'cache.rate_limiter'
+        # Define a rate limiter for registration attempts
+        registration:
+            policy: 'fixed_window'
+            limit: 3
+            interval: '15 minutes'
+            storage_service: 'cache.rate_limiter'

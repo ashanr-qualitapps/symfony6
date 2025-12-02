@@ -2,6 +2,7 @@
 
 namespace App\Security;
 
+use App\Repository\ApiTokenRepository;
 use App\Repository\UserRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,10 +18,12 @@ use Symfony\Component\Security\Http\Authenticator\Passport\SelfValidatingPasspor
 class ApiTokenAuthenticator extends AbstractAuthenticator
 {
     private UserRepository $userRepository;
+    private ApiTokenRepository $apiTokenRepository;
 
-    public function __construct(UserRepository $userRepository)
+    public function __construct(UserRepository $userRepository, ApiTokenRepository $apiTokenRepository)
     {
         $this->userRepository = $userRepository;
+        $this->apiTokenRepository = $apiTokenRepository;
     }
 
     public function supports(Request $request): ?bool
@@ -45,9 +48,8 @@ class ApiTokenAuthenticator extends AbstractAuthenticator
             throw new CustomUserMessageAuthenticationException('Invalid token format');
         }
 
-        // Validate token (simplified - in production, verify JWT or lookup in cache/DB)
-        // For this demo, we'll extract user from session or validate against stored tokens
-        $userIdentifier = $this->validateToken($token, $request);
+        // Validate token against database
+        $userIdentifier = $this->validateToken($token);
         
         if (null === $userIdentifier) {
             throw new CustomUserMessageAuthenticationException('Invalid or expired token');
@@ -74,23 +76,10 @@ class ApiTokenAuthenticator extends AbstractAuthenticator
         ], Response::HTTP_UNAUTHORIZED);
     }
 
-    private function validateToken(string $token, Request $request): ?string
+    private function validateToken(string $token): ?string
     {
-        // Simplified token validation using session
-        // In production, use JWT validation or Redis/database lookup
-        $session = $request->hasSession() ? $request->getSession() : null;
+        $apiToken = $this->apiTokenRepository->findValidToken($token);
         
-        if (null === $session) {
-            return null;
-        }
-
-        // Check all stored tokens in session
-        foreach ($session->all() as $key => $value) {
-            if (str_starts_with($key, 'api_token_') && $value === $token) {
-                return substr($key, 10); // Extract email from key
-            }
-        }
-
-        return null;
+        return $apiToken ? $apiToken->getUser()->getUserIdentifier() : null;
     }
 }

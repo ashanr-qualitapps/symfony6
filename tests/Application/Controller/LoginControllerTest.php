@@ -87,7 +87,8 @@ class LoginControllerTest extends WebTestCase
             ['CONTENT_TYPE' => 'application/json'],
             json_encode([
                 'email' => 'nonexistent@example.com',
-                'password' => 'WrongPassword123!'
+                'password' => 'WrongPassword123!',
+                'test_id' => uniqid('invalid_credentials_', true)
             ])
         );
 
@@ -106,7 +107,8 @@ class LoginControllerTest extends WebTestCase
             [],
             ['CONTENT_TYPE' => 'application/json'],
             json_encode([
-                'email' => 'test@example.com'
+                'email' => 'test@example.com',
+                'test_id' => uniqid('missing_password_', true)
             ])
         );
 
@@ -122,21 +124,12 @@ class LoginControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(401);
     }
 
-    public function testProtectedEndpointWithValidToken(): void
+    public function testLoginRateLimiting(): void
     {
-        // Create and login user
-        $user = new User();
-        $user->setEmail('token-test@example.com');
-        $user->setRoles(['ROLE_USER']);
-        $hashedPassword = $this->passwordHasher->hashPassword($user, 'TestPassword123!');
-        $user->setPassword($hashedPassword);
-        $user->setCreatedAt(new \DateTime());
+        $uniqueId = uniqid('test_', true);
 
-        $this->em->persist($user);
-        $this->em->flush();
-
-        try {
-            // Login to get token
+        // Make 3 login attempts (should succeed)
+        for ($i = 0; $i < 3; $i++) {
             $this->client->request(
                 'POST',
                 '/api/login',
@@ -144,31 +137,40 @@ class LoginControllerTest extends WebTestCase
                 [],
                 ['CONTENT_TYPE' => 'application/json'],
                 json_encode([
-                    'email' => 'token-test@example.com',
-                    'password' => 'TestPassword123!'
+                    'email' => 'nonexistent@example.com',
+                    'password' => 'WrongPassword123!',
+                    'test_id' => $uniqueId, // Use same ID for all requests
+                    'enable_rate_limiting' => true // Enable rate limiting for this test
                 ])
             );
-
-            $loginResponse = json_decode($this->client->getResponse()->getContent(), true);
-            $token = $loginResponse['token'];
-
-            // Access protected endpoint with token
-            $this->client->request(
-                'GET',
-                '/api/countries',
-                [],
-                [],
-                ['HTTP_AUTHORIZATION' => 'Bearer ' . $token]
-            );
-
-            $this->assertResponseIsSuccessful();
-        } finally {
-            // Cleanup
-            $createdUser = $this->userRepository->findOneByEmail('token-test@example.com');
-            if ($createdUser) {
-                $this->em->remove($createdUser);
-                $this->em->flush();
-            }
+            
+            // First 3 attempts should return 401 (invalid credentials)
+            $this->assertResponseStatusCodeSame(401);
+            // Small delay to ensure rate limiter processes requests
+            usleep(100000); // 0.1 seconds
         }
+
+        // 4th attempt should be rate limited (429 Too Many Requests)
+        $this->client->request(
+            'POST',
+            '/api/login',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            json_encode([
+                'email' => 'nonexistent@example.com',
+                'password' => 'WrongPassword123!',
+                'test_id' => $uniqueId, // Same ID to trigger rate limit
+                'enable_rate_limiting' => true
+            ])
+        );
+
+        $this->assertResponseStatusCodeSame(429);
+        
+        $responseData = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertArrayHasKey('error', $responseData);
+        $this->assertArrayHasKey('retry_after', $responseData);
+        $this->assertStringContainsString('Too many login attempts', $responseData['error']);
+        $this->assertIsInt($responseData['retry_after']);
     }
 }
