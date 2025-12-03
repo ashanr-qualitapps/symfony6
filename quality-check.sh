@@ -138,6 +138,41 @@ echo ""
 # ===========================================
 # PHP UNIT TESTS
 # ===========================================
+print_section "Database Check" "Verifying test database 'symfony6_test' exists"
+
+if $CMD_PREFIX php bin/console dbal:run-sql "SELECT 1" --env=test 2>&1; then
+    print_success "Test database 'symfony6_test' exists"
+else
+    print_error "Test database 'symfony6_test' does not exist. Aborting."
+    exit 1
+fi
+
+
+print_section "Database" "Setting up test database"
+
+# Create login_attempts table BEFORE migrations for both dev and test environments
+# Dev environment
+$CMD_PREFIX php bin/console dbal:run-sql "CREATE TABLE IF NOT EXISTS login_attempts (id INT AUTO_INCREMENT NOT NULL, identifier VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL COLLATE utf8mb4_unicode_ci, attempts INT DEFAULT 0 NOT NULL, last_attempt DATETIME NOT NULL, PRIMARY KEY(id), UNIQUE INDEX UNIQ_login_attempts_identifier (identifier)) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB" || true
+
+# Test environment
+$CMD_PREFIX php bin/console dbal:run-sql "CREATE TABLE IF NOT EXISTS login_attempts (id INT AUTO_INCREMENT NOT NULL, identifier VARCHAR(255) CHARACTER SET utf8mb4 NOT NULL COLLATE utf8mb4_unicode_ci, attempts INT DEFAULT 0 NOT NULL, last_attempt DATETIME NOT NULL, PRIMARY KEY(id), UNIQUE INDEX UNIQ_login_attempts_identifier (identifier)) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB" --env=test || true
+
+# Run migrations AFTER creating the table
+$CMD_PREFIX php bin/console doctrine:migrations:migrate --env=test --no-interaction || true
+
+# Update schema to match entities (excluding extra tables like login_attempts)
+$CMD_PREFIX php bin/console doctrine:schema:update --force --env=test || true
+
+# Verify database schema
+print_section "Database" "Verifying test database schema"
+if $CMD_PREFIX php bin/console doctrine:schema:validate --env=test; then
+    print_success "Database schema validation passed"
+else
+    print_error "Database schema validation failed"
+    FAILED_TOOLS+=("Database Schema")
+    EXIT_CODE=1
+fi
+
 if [ "$GENERATE_COVERAGE" = true ]; then
     run_command "PHPUnit" "$CMD_PREFIX php bin/phpunit --coverage-html=$COVERAGE_DIR --coverage-text" "Running PHPUnit tests with coverage"
     if [ $? -eq 0 ] && [ -d "$COVERAGE_DIR" ]; then

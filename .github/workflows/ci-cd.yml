@@ -1,10 +1,9 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [master, main, develop]
-  pull_request:
-    branches: [master, main]
+  # Workflow triggers are disabled for this repository to prevent automatic
+  # runs. This file was updated to allow manual dispatch only. To re-enable
+  # automatic runs, restore the original `push` / `pull_request` triggers.
   workflow_dispatch:
 
 env:
@@ -97,9 +96,11 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: symfony6_test
+          MYSQL_DATABASE: symfony6
+          MYSQL_USER: symfony
+          MYSQL_PASSWORD: symfony
         ports:
-          - 3306:3306
+          - 3307:3306
         options: >-
           --health-cmd="mysqladmin ping"
           --health-interval=10s

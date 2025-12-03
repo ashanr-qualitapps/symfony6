@@ -26,8 +26,8 @@ doctrine:
 when@test:
     doctrine:
         dbal:
-            # Use the base database in test instead of _test suffix so tests run with the same DB
-            dbname_suffix: ''
+            # Use the test database for tests
+            dbname_suffix: null
 
 when@prod:
     doctrine:

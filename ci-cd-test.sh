@@ -414,7 +414,7 @@ case "${1:-}" in
         run_docker_compose up -d --build
         sleep 10
         run_architecture_check
-        run_docker_compose down -v 2>/dev/null || true
+        #run_docker_compose down -v 2>/dev/null || true
         ;;
     --docker-build)
         run_docker_build_test
