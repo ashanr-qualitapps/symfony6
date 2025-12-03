@@ -140,6 +140,8 @@ jobs:
         run: |
           php bin/console doctrine:database:create --env=test --if-not-exists || true
           php bin/console doctrine:migrations:migrate --env=test --no-interaction || true
+          # Ensure login_attempts table exists for rate limiting tests
+          php bin/console doctrine:query:sql "CREATE TABLE IF NOT EXISTS login_attempts (id INT AUTO_INCREMENT NOT NULL, identifier VARCHAR(255) NOT NULL, attempts INT NOT NULL DEFAULT 0, last_attempt DATETIME NOT NULL, PRIMARY KEY(id), UNIQUE INDEX UNIQ_login_attempts_identifier (identifier)) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ENGINE = InnoDB" --env=test || true
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit --configuration phpunit.dist.xml --coverage-text

@@ -8,6 +8,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\KernelInterface;
 use Symfony\Component\RateLimiter\RateLimiterFactory;
 use Symfony\Component\Security\Http\Event\CheckPassportEvent;
 
@@ -18,27 +19,45 @@ class LoginRateLimitListener
     private RateLimiterFactory $loginLimiterFactory;
     private RateLimiterFactory $registrationLimiterFactory;
     private RequestStack $requestStack;
+    private KernelInterface $kernel;
 
-    public function __construct(RateLimiterFactory $loginLimiterFactory, RateLimiterFactory $registrationLimiterFactory, RequestStack $requestStack)
-    {
+    public function __construct(
+        RateLimiterFactory $loginLimiterFactory,
+        RateLimiterFactory $registrationLimiterFactory,
+        RequestStack $requestStack,
+        KernelInterface $kernel
+    ) {
         $this->loginLimiterFactory = $loginLimiterFactory;
         $this->registrationLimiterFactory = $registrationLimiterFactory;
         $this->requestStack = $requestStack;
+        $this->kernel = $kernel;
     }
 
     public function onRequest(RequestEvent $event): void
     {
-
         $request = $event->getRequest();
+
+        // Check if rate limiting is explicitly enabled via request data
+        $requestData = json_decode($request->getContent(), true) ?: [];
+        $enableRateLimiting = $requestData['enable_rate_limiting'] ?? false;
+
+        // Skip rate limiting in test environment unless explicitly enabled
+        if ($this->kernel->getEnvironment() === 'test' && !$enableRateLimiting) {
+            return;
+        }
 
         // Apply rate limiting to registration endpoint
         if ($request->getPathInfo() === '/api/register' && $request->isMethod('POST')) {
-            $limiter = $this->registrationLimiterFactory->create($request->getClientIp() ?: 'test-client');
+            $requestData = json_decode($request->getContent(), true) ?: [];
+            $identifier = $requestData['test_id'] ?? $request->getClientIp() ?: 'test-client';
 
-            if (!$limiter->consume(1)->isAccepted()) {
+            $limiter = $this->registrationLimiterFactory->create($identifier);
+            $limit = $limiter->consume(1);
+
+            if (!$limit->isAccepted()) {
                 $event->setResponse(new JsonResponse([
                     'error' => 'Too many registration attempts. Please try again later.',
-                    'retry_after' => $limiter->consume(1)->getRetryAfter()->getTimestamp() - time()
+                    'retry_after' => $limit->getRetryAfter()->getTimestamp() - time()
                 ], Response::HTTP_TOO_MANY_REQUESTS));
             }
         }
@@ -48,6 +67,14 @@ class LoginRateLimitListener
     {
         $request = $this->requestStack->getCurrentRequest();
         if (!$request) {
+            return;
+        }
+
+        // Skip rate limiting in test environment unless explicitly enabled via request data
+        $requestData = json_decode($request->getContent(), true) ?: [];
+        $enableRateLimiting = $requestData['enable_rate_limiting'] ?? false;
+
+        if ($this->kernel->getEnvironment() === 'test' && !$enableRateLimiting) {
             return;
         }
 

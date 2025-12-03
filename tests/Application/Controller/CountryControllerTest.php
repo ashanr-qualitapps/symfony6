@@ -3,7 +3,6 @@
 namespace App\Tests\Application\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -11,8 +10,8 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 class CountryControllerTest extends WebTestCase
 {
+    private ?KernelBrowser $client = null;
     private ?EntityManagerInterface $em = null;
-    private ?UserRepository $userRepository = null;
     private ?UserPasswordHasherInterface $passwordHasher = null;
     private ?string $authToken = null;
 
@@ -21,17 +20,33 @@ class CountryControllerTest extends WebTestCase
         return \App\Kernel::class;
     }
 
-    private function authenticateUser(KernelBrowser $client): void
+    protected function setUp(): void
     {
-        if ($this->authToken !== null) {
-            return; // Already authenticated
-        }
-
+        $this->client = static::createClient();
         $container = static::getContainer();
         $this->em = $container->get(EntityManagerInterface::class);
-        $this->userRepository = $container->get(UserRepository::class);
         $this->passwordHasher = $container->get(UserPasswordHasherInterface::class);
 
+        // Clean up any leftover test data first
+        $this->cleanupTestUser();
+
+        // Create and authenticate test user
+        $this->authenticateUser();
+    }
+
+    private function cleanupTestUser(): void
+    {
+        $conn = $this->em->getConnection();
+        $email = 'country-test@example.com';
+        $sql = sprintf("DELETE FROM api_tokens WHERE user_id IN (SELECT id FROM users WHERE email = '%s')", $email);
+        $conn->executeStatement($sql);
+
+        $sql = sprintf("DELETE FROM users WHERE email = '%s'", $email);
+        $conn->executeStatement($sql);
+    }
+
+    private function authenticateUser(): void
+    {
         // Create a test user
         $user = new User();
         $user->setEmail('country-test@example.com');
@@ -44,7 +59,7 @@ class CountryControllerTest extends WebTestCase
         $this->em->flush();
 
         // Login to get token
-        $client->request(
+        $this->client->request(
             'POST',
             '/api/login',
             [],
@@ -56,35 +71,26 @@ class CountryControllerTest extends WebTestCase
             ])
         );
 
-        $loginResponse = json_decode($client->getResponse()->getContent(), true);
+        $loginResponse = json_decode($this->client->getResponse()->getContent(), true);
         $this->authToken = $loginResponse['token'];
     }
 
     protected function tearDown(): void
     {
-        if ($this->em && $this->userRepository) {
-            $user = $this->userRepository->findOneByEmail('country-test@example.com');
-            if ($user) {
-                $this->em->remove($user);
-                $this->em->flush();
-            }
-        }
-
+        $this->cleanupTestUser();
         parent::tearDown();
     }
 
     public function testGetCountriesReturnsJson(): void
     {
-        $client = static::createClient();
-        $this->authenticateUser($client);
-        $client->request('GET', '/api/countries', [], [], [
+        $this->client->request('GET', '/api/countries', [], [], [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $this->authToken
         ]);
 
         $this->assertResponseIsSuccessful();
         $this->assertResponseHeaderSame('Content-Type', 'application/json');
 
-        $data = json_decode($client->getResponse()->getContent(), true);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
 
         $this->assertIsArray($data);
         $this->assertCount(193, $data); // We have 193 countries
@@ -102,9 +108,7 @@ class CountryControllerTest extends WebTestCase
 
     public function testGetCountriesReturnsCorrectStatusCode(): void
     {
-        $client = static::createClient();
-        $this->authenticateUser($client);
-        $client->request('GET', '/api/countries', [], [], [
+        $this->client->request('GET', '/api/countries', [], [], [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $this->authToken
         ]);
 
@@ -113,16 +117,14 @@ class CountryControllerTest extends WebTestCase
 
     public function testGetCountryCodesReturnsJson(): void
     {
-        $client = static::createClient();
-        $this->authenticateUser($client);
-        $client->request('GET', '/api/country-codes', [], [], [
+        $this->client->request('GET', '/api/country-codes', [], [], [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $this->authToken
         ]);
 
         $this->assertResponseIsSuccessful();
         $this->assertResponseHeaderSame('Content-Type', 'application/json');
 
-        $data = json_decode($client->getResponse()->getContent(), true);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
 
         $this->assertIsArray($data);
         $this->assertCount(193, $data); // We have 193 countries
@@ -140,9 +142,7 @@ class CountryControllerTest extends WebTestCase
 
     public function testGetCountryCodesReturnsCorrectStatusCode(): void
     {
-        $client = static::createClient();
-        $this->authenticateUser($client);
-        $client->request('GET', '/api/country-codes', [], [], [
+        $this->client->request('GET', '/api/country-codes', [], [], [
             'HTTP_AUTHORIZATION' => 'Bearer ' . $this->authToken
         ]);
 

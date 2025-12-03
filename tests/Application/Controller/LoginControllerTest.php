@@ -3,7 +3,6 @@
 namespace App\Tests\Application\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -13,7 +12,6 @@ class LoginControllerTest extends WebTestCase
 {
     private ?KernelBrowser $client = null;
     private ?EntityManagerInterface $em = null;
-    private ?UserRepository $userRepository = null;
     private ?UserPasswordHasherInterface $passwordHasher = null;
 
     protected function setUp(): void
@@ -21,7 +19,6 @@ class LoginControllerTest extends WebTestCase
         $this->client = static::createClient();
         $container = static::getContainer();
         $this->em = $container->get(EntityManagerInterface::class);
-        $this->userRepository = $container->get(UserRepository::class);
         $this->passwordHasher = $container->get(UserPasswordHasherInterface::class);
     }
 
@@ -32,6 +29,14 @@ class LoginControllerTest extends WebTestCase
 
     public function testLoginWithValidCredentials(): void
     {
+        // Cleanup first (in case of previous failed test)
+        $conn = $this->em->getConnection();
+        $sql = "DELETE FROM api_tokens WHERE user_id IN (SELECT id FROM users WHERE email = 'login-test@example.com')";
+        $conn->executeStatement($sql);
+
+        $sql = "DELETE FROM users WHERE email = 'login-test@example.com'";
+        $conn->executeStatement($sql);
+
         // Create a test user
         $user = new User();
         $user->setEmail('login-test@example.com');
@@ -61,19 +66,21 @@ class LoginControllerTest extends WebTestCase
             $this->assertResponseHeaderSame('content-type', 'application/json');
 
             $responseData = json_decode($this->client->getResponse()->getContent(), true);
-            
+
             $this->assertTrue($responseData['success']);
             $this->assertArrayHasKey('token', $responseData);
             $this->assertArrayHasKey('user', $responseData);
             $this->assertEquals('login-test@example.com', $responseData['user']['email']);
             $this->assertContains('ROLE_USER', $responseData['user']['roles']);
         } finally {
-            // Cleanup
-            $createdUser = $this->userRepository->findOneByEmail('login-test@example.com');
-            if ($createdUser) {
-                $this->em->remove($createdUser);
-                $this->em->flush();
-            }
+            // Cleanup - use raw SQL to delete tokens first, then user
+            $conn = $this->em->getConnection();
+            $email = 'login-test@example.com';
+            $sql = sprintf("DELETE FROM api_tokens WHERE user_id IN (SELECT id FROM users WHERE email = '%s')", $email);
+            $conn->executeStatement($sql);
+
+            $sql = sprintf("DELETE FROM users WHERE email = '%s'", $email);
+            $conn->executeStatement($sql);
         }
     }
 
@@ -93,7 +100,7 @@ class LoginControllerTest extends WebTestCase
         );
 
         $this->assertResponseStatusCodeSame(401);
-        
+
         $responseData = json_decode($this->client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('error', $responseData);
     }
@@ -119,7 +126,7 @@ class LoginControllerTest extends WebTestCase
     public function testProtectedEndpointWithoutToken(): void
     {
         $this->client->request('GET', '/api/countries');
-        
+
         // Should return 401 Unauthorized
         $this->assertResponseStatusCodeSame(401);
     }
@@ -143,7 +150,7 @@ class LoginControllerTest extends WebTestCase
                     'enable_rate_limiting' => true // Enable rate limiting for this test
                 ])
             );
-            
+
             // First 3 attempts should return 401 (invalid credentials)
             $this->assertResponseStatusCodeSame(401);
             // Small delay to ensure rate limiter processes requests
@@ -166,7 +173,7 @@ class LoginControllerTest extends WebTestCase
         );
 
         $this->assertResponseStatusCodeSame(429);
-        
+
         $responseData = json_decode($this->client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('error', $responseData);
         $this->assertArrayHasKey('retry_after', $responseData);

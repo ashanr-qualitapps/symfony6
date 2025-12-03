@@ -3,7 +3,6 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,13 +13,13 @@ use Symfony\Component\Routing\Annotation\Route;
 class RegistrationController
 {
     private EntityManagerInterface $em;
-    private UserRepository $userRepository;
     private UserPasswordHasherInterface $passwordHasher;
 
-    public function __construct(EntityManagerInterface $em, UserRepository $userRepository, UserPasswordHasherInterface $passwordHasher)
-    {
+    public function __construct(
+        EntityManagerInterface $em,
+        UserPasswordHasherInterface $passwordHasher
+    ) {
         $this->em = $em;
-        $this->userRepository = $userRepository;
         $this->passwordHasher = $passwordHasher;
     }
 
@@ -38,7 +37,8 @@ class RegistrationController
         }
 
         // Check if user exists
-        if ($this->userRepository->findOneByEmail($email)) {
+        $existingUser = $this->em->getRepository(User::class)->findOneBy(['email' => $email]);
+        if ($existingUser) {
             return new JsonResponse(['error' => 'Email already in use'], Response::HTTP_CONFLICT);
         }
 

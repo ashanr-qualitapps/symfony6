@@ -27,11 +27,19 @@ class RegistrationControllerTest extends WebTestCase
                 'enable_rate_limiting' => true
             ];
 
-            $client->request('POST', '/api/register', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($payload));
-            
+            $body = json_encode($payload);
+            $client->request(
+                'POST',
+                '/api/register',
+                [],
+                [],
+                ['CONTENT_TYPE' => 'application/json'],
+                $body
+            );
+
             // First 3 attempts should succeed (201 Created)
             $this->assertResponseStatusCodeSame(201);
-            
+
             // Cleanup the created user
             $container = static::getContainer();
             $repo = $container->get(UserRepository::class);
@@ -41,7 +49,7 @@ class RegistrationControllerTest extends WebTestCase
                 $em->remove($user);
                 $em->flush();
             }
-            
+
             // Small delay to ensure rate limiter processes requests
             usleep(100000); // 0.1 seconds
         }
@@ -54,10 +62,18 @@ class RegistrationControllerTest extends WebTestCase
             'enable_rate_limiting' => true
         ];
 
-        $client->request('POST', '/api/register', [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($payload));
+        $body = json_encode($payload);
+        $client->request(
+            'POST',
+            '/api/register',
+            [],
+            [],
+            ['CONTENT_TYPE' => 'application/json'],
+            $body
+        );
 
         $this->assertResponseStatusCodeSame(429);
-        
+
         $responseData = json_decode($client->getResponse()->getContent(), true);
         $this->assertArrayHasKey('error', $responseData);
         $this->assertArrayHasKey('retry_after', $responseData);
